@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -17,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -120,5 +121,29 @@ class AuthServiceTest {
         AuthResponse response = authService.register(request);
 
         assertEquals("testuser@example.com", response.getEmail());
+    }
+
+    @Test
+    void getAuthResponseByEmailShouldReturnConsistentUserFields() {
+
+        User user = new User();
+        user.setId(5L);
+        user.setName("Chandu");
+        user.setEmail("chandu@example.com");
+        user.setRole("CANDIDATE");
+
+        when(userRepository.findByEmail("chandu@example.com"))
+                .thenReturn(Optional.of(user));
+
+        AuthResponse response = authService.getAuthResponseByEmail(
+                " CHANDU@EXAMPLE.COM ",
+                "Login successful"
+        );
+
+        assertEquals(5L, response.getId());
+        assertEquals("Chandu", response.getName());
+        assertEquals("chandu@example.com", response.getEmail());
+        assertEquals("CANDIDATE", response.getRole());
+        assertEquals("Login successful", response.getMessage());
     }
 }

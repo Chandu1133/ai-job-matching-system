@@ -11,14 +11,10 @@ import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.context.SecurityContextRepository;
-import org.springframework.security.web.authentication.session.ChangeSessionIdAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,27 +22,29 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
-    private final AuthenticationManager authenticationManager;
     private final SecurityContextRepository securityContextRepository;
-
-    private final SessionAuthenticationStrategy sessionStrategy =
-            new ChangeSessionIdAuthenticationStrategy();
 
     public AuthController(
             AuthService authService,
-            AuthenticationManager authenticationManager,
             SecurityContextRepository securityContextRepository) {
 
         this.authService = authService;
-        this.authenticationManager = authenticationManager;
         this.securityContextRepository = securityContextRepository;
     }
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> register(
-            @Valid @RequestBody RegisterRequest request) {
+            @Valid @RequestBody RegisterRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
 
         AuthResponse response = authService.register(request);
+
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setEmail(request.getEmail());
+        loginRequest.setPassword(request.getPassword());
+        Authentication authentication = authService.authenticateUser(loginRequest);
+        saveSessionContext(authentication, httpRequest, httpResponse);
 
         return ResponseEntity
                 .status(HttpStatus.CREATED)
@@ -59,18 +57,36 @@ public class AuthController {
             HttpServletRequest httpRequest,
             HttpServletResponse httpResponse) {
 
-        Authentication authentication =
-                authenticationManager.authenticate(
-                        UsernamePasswordAuthenticationToken
-                                .unauthenticated(
-                                        request.getEmail().trim()
-                                                .toLowerCase(),
-                                        request.getPassword()
-                                )
-                );
+        Authentication authentication = authService.authenticateUser(request);
+        saveSessionContext(authentication, httpRequest, httpResponse);
 
-        sessionStrategy.onAuthentication(
-                authentication, httpRequest, httpResponse);
+        return ResponseEntity.ok(
+                authService.getAuthResponseByEmail(
+                        authentication.getName(),
+                        "Login successful"
+                )
+        );
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<AuthResponse> resetPassword(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        AuthResponse response = authService.resetPassword(request);
+        Authentication authentication = authService.authenticateUser(request);
+        saveSessionContext(authentication, httpRequest, httpResponse);
+
+        return ResponseEntity.ok(response);
+    }
+
+    private void saveSessionContext(
+            Authentication authentication,
+            HttpServletRequest httpRequest,
+            HttpServletResponse httpResponse) {
+
+        httpRequest.getSession(true);
 
         SecurityContext context =
                 SecurityContextHolder.createEmptyContext();
@@ -80,16 +96,5 @@ public class AuthController {
 
         securityContextRepository.saveContext(
                 context, httpRequest, httpResponse);
-
-        return ResponseEntity.ok(
-                new AuthResponse(
-                        null,
-                        authentication.getName(),
-                        authentication.getName(),
-                        authentication.getAuthorities()
-                                .iterator().next().getAuthority(),
-                        "Login successful"
-                )
-        );
     }
 }

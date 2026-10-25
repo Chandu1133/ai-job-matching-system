@@ -1,0 +1,25 @@
+spring.application.name=job-matching-system
+server.port=8080
+
+# MySQL Database Configuration
+spring.datasource.url=jdbc:mysql://localhost:3306/job_matching_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+spring.datasource.username=root
+spring.datasource.password=YOUR_MYSQL_PASSWORD_HERE
+spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
+
+# JPA / Hibernate Configuration
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=false
+spring.jpa.properties.hibernate.format_sql=true
+
+# File Upload Limits (PDF / DOCX Resumes)
+spring.servlet.multipart.max-file-size=5MB
+spring.servlet.multipart.max-request-size=5MB
+app.resume.upload-dir=uploads/resumes
+
+# Python FastAPI NLP Microservice Configuration
+app.nlp.service-url=http://localhost:8000
+app.nlp.timeout-ms=5000
+
+# External Job Portal Sync (Optional JSearch RapidAPI Key for LinkedIn / Naukri / Indeed)
+app.jobs.jsearch-api-key=YOUR_RAPIDAPI_KEY_HERE
